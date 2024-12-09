@@ -17,6 +17,7 @@ var Movies = []Movie{
 	{Title: "test2", Genre: "test2", Rating: 0},
 	{Title: "jdka", Genre: "kdjfka", Rating: 939},
 	{Title: "jdka", Genre: "Sci-Fi", Rating: 939},
+	{Title: "sci fi ", Genre: "Sci-Fi", Rating: 939},
 }
 
 func handleHealth(w http.ResponseWriter, r *http.Request) {
@@ -34,13 +35,12 @@ func handleRecommendations(w http.ResponseWriter, r *http.Request) {
 		} else {
 			if genre == movie.Genre {
 
-				movieName = movie.Title + "\n"
+				movieName += movie.Title + "\n"
 			}
 		}
 
-		w.Write([]byte(movieName))
-
 	}
+	w.Write([]byte(movieName))
 }
 
 func main() {
