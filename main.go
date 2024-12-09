@@ -29,8 +29,7 @@ func handleRecommendations(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
-	http.HandleFunc("/recommendations", handleRecommendations)
+	http.HandleFunc("/recommendations?genre=Sci-Fi", handleRecommendations)
 	http.HandleFunc("/health", handleHealth)
-
 	http.ListenAndServe(":8080", nil)
 }
