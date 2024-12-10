@@ -3,6 +3,9 @@ package main
 import (
 	"fmt"
 	"net/http"
+	"time"
+
+	"golang.org/x/time/rate"
 )
 
 type Movie struct {
@@ -20,11 +23,40 @@ var Movies = []Movie{
 	{Title: "sci fi ", Genre: "Sci-Fi", Rating: 939},
 }
 
+var limiter map[string]*rate.Limiter
+
+func getLimiter(ip string) *rate.Limiter {
+	ipLimiter, exists := limiter[ip]
+	if exists {
+		return ipLimiter
+	}
+	newLimiter := rate.NewLimiter(rate.Every(time.Second), 5)
+	limiter[ip] = newLimiter
+
+	return newLimiter
+}
+func isThereIP(w http.ResponseWriter, r *http.Request) {
+
+	userIp := r.Header.Get("X-Forwarded-For")
+	getLimiter(userIp)
+
+	if userIp == "" {
+		userIp = r.RemoteAddr
+	}
+
+	ipLimiter := getLimiter(userIp)
+	if !ipLimiter.Allow() {
+		http.Error(w, "Too many requests", http.StatusTooManyRequests)
+	}
+	fmt.Println(userIp)
+}
+
 func handleHealth(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte("OK"))
 }
 
 func handleRecommendations(w http.ResponseWriter, r *http.Request) {
+	isThereIP(w, r)
 	genre := r.URL.Query().Get("genre")
 	fmt.Println(genre)
 	var movieName string = ""
@@ -44,6 +76,7 @@ func handleRecommendations(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
+	limiter = make(map[string]*rate.Limiter)
 	http.HandleFunc("/recommendations", handleRecommendations)
 	http.HandleFunc("/health", handleHealth)
 	http.ListenAndServe(":8080", nil)
