@@ -17,12 +17,11 @@ type Movie struct {
 }
 
 var Movies = []Movie{
-	{Title: "test", Genre: "test", Rating: 0},
-	{Title: "test1", Genre: "test1", Rating: 0},
-	{Title: "test2", Genre: "test2", Rating: 0},
-	{Title: "jdka", Genre: "kdjfka", Rating: 939},
-	{Title: "jdka", Genre: "Sci-Fi", Rating: 939},
-	{Title: "sci fi ", Genre: "Sci-Fi", Rating: 939},
+	{Title: "Oldboy", Genre: "Thriller", Rating: 9.2},
+	{Title: "I Saw the Devil", Genre: "Horror", Rating: 8.5},
+	{Title: "Sympathy for Lady Vengeance", Genre: "Thriller", Rating: 8.4},
+	{Title: "Sympathy for Mr. Vengeance", Genre: "Thriller", Rating: 8.0},
+	{Title: "Memories of Murder", Genre: "Crime", Rating: 8.9},
 }
 
 var limiter = make(map[string]*rate.Limiter)
