@@ -1,7 +1,9 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
+	"net"
 	"net/http"
 	"time"
 
@@ -23,32 +25,32 @@ var Movies = []Movie{
 	{Title: "sci fi ", Genre: "Sci-Fi", Rating: 939},
 }
 
-var limiter map[string]*rate.Limiter
+var limiter = make(map[string]*rate.Limiter)
 
 func getLimiter(ip string) *rate.Limiter {
 	ipLimiter, exists := limiter[ip]
 	if exists {
 		return ipLimiter
 	}
-	newLimiter := rate.NewLimiter(rate.Every(time.Second), 5)
+	newLimiter := rate.NewLimiter(rate.Every(5*time.Second), 1)
 	limiter[ip] = newLimiter
 
 	return newLimiter
 }
 func isThereIP(w http.ResponseWriter, r *http.Request) {
-
 	userIp := r.Header.Get("X-Forwarded-For")
-	getLimiter(userIp)
-
 	if userIp == "" {
-		userIp = r.RemoteAddr
+		userIp, _, _ = net.SplitHostPort(r.RemoteAddr)
 	}
 
 	ipLimiter := getLimiter(userIp)
 	if !ipLimiter.Allow() {
+		fmt.Println("Request denied for IP:", userIp)
 		http.Error(w, "Too many requests", http.StatusTooManyRequests)
+		return
 	}
-	fmt.Println(userIp)
+
+	fmt.Println("Request allowed for IP:", userIp, ipLimiter)
 }
 
 func handleHealth(w http.ResponseWriter, r *http.Request) {
@@ -59,20 +61,19 @@ func handleRecommendations(w http.ResponseWriter, r *http.Request) {
 	isThereIP(w, r)
 	genre := r.URL.Query().Get("genre")
 	fmt.Println(genre)
-	var movieName string = ""
-
+	var movieName []Movie
 	for _, movie := range Movies {
-		if genre == "" {
-			movieName += movie.Title + "\n"
-		} else {
-			if genre == movie.Genre {
-
-				movieName += movie.Title + "\n"
-			}
+		if genre == "" || genre == movie.Genre {
+			movieName = append(movieName, movie)
 		}
-
 	}
-	w.Write([]byte(movieName))
+
+	w.Header().Set("Content-Type", "application/json")
+
+	if err := json.NewEncoder(w).Encode(movieName); err != nil {
+		http.Error(w, "Failed to encode response", http.StatusInternalServerError)
+	}
+
 }
 
 func main() {
