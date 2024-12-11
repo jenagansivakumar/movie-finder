@@ -6,6 +6,7 @@ import (
 	"net"
 	"net/http"
 	"net/url"
+	"os"
 	"time"
 
 	"golang.org/x/time/rate"
@@ -50,7 +51,7 @@ func isThereIP(w http.ResponseWriter, r *http.Request) {
 }
 
 func fetchMoviesFromTMDb(query string) ([]TMDbMovie, error) {
-	apiKey := "6b951cc71ae3f04fedcccb3585b50bab"
+	apiKey := os.Getenv("TMDB_API_KEY")
 	escapedQuery := url.QueryEscape(query)
 	apiURL := fmt.Sprintf("https://api.themoviedb.org/3/search/movie?api_key=%s&query=%s", apiKey, escapedQuery)
 
