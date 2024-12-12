@@ -3,111 +3,87 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"net"
+	"log"
 	"net/http"
-	"net/url"
 	"os"
-	"time"
 
-	"golang.org/x/time/rate"
+	"github.com/joho/godotenv"
 )
 
-type TMDbMovie struct {
-	Title       string  `json:"title"`
-	Overview    string  `json:"overview"`
-	VoteAverage float64 `json:"vote_average"`
-}
+var tmdbApiKey string
 
-type TMDbResponse struct {
-	Results []TMDbMovie `json:"results"`
-}
+func getDotEnv(key string) string {
+	err := godotenv.Load()
 
-var limiter = make(map[string]*rate.Limiter)
-
-func getLimiter(ip string) *rate.Limiter {
-	ipLimiter, exists := limiter[ip]
-	if exists {
-		return ipLimiter
-	}
-	newLimiter := rate.NewLimiter(rate.Every(5*time.Second), 1)
-	limiter[ip] = newLimiter
-	return newLimiter
-}
-
-func isThereIP(w http.ResponseWriter, r *http.Request) {
-	userIp := r.Header.Get("X-Forwarded-For")
-	if userIp == "" {
-		userIp, _, _ = net.SplitHostPort(r.RemoteAddr)
-	}
-
-	ipLimiter := getLimiter(userIp)
-	if !ipLimiter.Allow() {
-		fmt.Println("Request denied for IP:", userIp)
-		http.Error(w, "Too many requests", http.StatusTooManyRequests)
-		return
-	}
-
-	fmt.Println("Request allowed for IP:", userIp)
-}
-
-func fetchMoviesFromTMDb(query string) ([]TMDbMovie, error) {
-	apiKey := os.Getenv("TMDB_API_KEY")
-	escapedQuery := url.QueryEscape(query)
-	apiURL := fmt.Sprintf("https://api.themoviedb.org/3/search/movie?api_key=%s&query=%s", apiKey, escapedQuery)
-
-	resp, err := http.Get(apiURL)
 	if err != nil {
-		fmt.Println("HTTP Request Error:", err)
-		return nil, err
-	}
-	defer resp.Body.Close()
+		log.Fatalf("Error loading .env file", err)
 
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("API Error: %s", resp.Status)
 	}
 
-	var tmdbResponse TMDbResponse
-	if err := json.NewDecoder(resp.Body).Decode(&tmdbResponse); err != nil {
-		fmt.Println("JSON Decode Error:", err)
-		return nil, err
+	value := os.Getenv(key)
+	if value == "" {
+		log.Fatal("Environment variable %s is not set or empty", key)
 	}
 
-	return tmdbResponse.Results, nil
+	return value
 }
 
-func handleRecommendations(w http.ResponseWriter, r *http.Request) {
-	isThereIP(w, r)
+type Movie struct {
+	Title  string
+	Genre  string
+	Rating float64
+}
 
-	query := r.URL.Query().Get("genre")
-	if query == "" {
-		http.Error(w, "Missing 'genre' query parameter", http.StatusBadRequest)
+var Movies = []Movie{
+	{Title: "Parasite", Genre: "Drama", Rating: 8.6},
+	{Title: "Oldboy", Genre: "Thriller", Rating: 8.4},
+	{Title: "The Handmaiden", Genre: "Romance", Rating: 8.1},
+	{Title: "I Saw the Devil", Genre: "Horror", Rating: 7.8},
+	{Title: "Train to Busan", Genre: "Action", Rating: 7.6},
+	{Title: "Memories of Murder", Genre: "Crime", Rating: 8.1},
+	{Title: "Sympathy for Lady Vengeance", Genre: "Thriller", Rating: 7.6},
+	{Title: "The Wailing", Genre: "Horror", Rating: 7.4},
+	{Title: "A Tale of Two Sisters", Genre: "Horror", Rating: 7.1},
+	{Title: "Burning", Genre: "Mystery", Rating: 7.5},
+}
+
+func getRecommendation(w http.ResponseWriter, r *http.Request) {
+	genre := r.URL.Query().Get("genre")
+	movieList := []string{}
+
+	if genre == "" {
+		w.Write([]byte("Genre has not been speicified"))
 		return
 	}
 
-	results, err := fetchMoviesFromTMDb(query)
+	for _, movie := range Movies {
+		if genre == movie.Genre {
+			movieList = append(movieList, movie.Title)
+		}
+	}
+	if len(movieList) == 0 {
+		w.Write([]byte("Movielist is empty!"))
+		return
+	}
+
+	jsonData, err := json.Marshal(movieList)
 	if err != nil {
-		http.Error(w, "Failed to fetch movies", http.StatusInternalServerError)
-		fmt.Println("Error fetching movies:", err)
+		http.Error(w, "Error encoding the  data", http.StatusInternalServerError)
 		return
 	}
-
 	w.Header().Set("Content-Type", "application/json")
-	if err := json.NewEncoder(w).Encode(results); err != nil {
-		http.Error(w, "Failed to encode response", http.StatusInternalServerError)
-		fmt.Println("Error encoding JSON:", err)
-	}
+	w.Write(jsonData)
+
 }
 
-func handleHealth(w http.ResponseWriter, r *http.Request) {
+func healthCheck(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte("OK"))
 }
 
 func main() {
-	http.HandleFunc("/recommendations", handleRecommendations)
-	http.HandleFunc("/health", handleHealth)
-
-	fmt.Println("Starting server on :8080")
-	if err := http.ListenAndServe(":8080", nil); err != nil {
-		fmt.Println("Server error:", err)
-	}
+	tmdbApiKey = getDotEnv("TMDB_API_KEY")
+	fmt.Printf(tmdbApiKey)
+	http.HandleFunc("/recommendations", getRecommendation)
+	http.HandleFunc("/health", healthCheck)
+	http.ListenAndServe(":8080", nil)
 }
