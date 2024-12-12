@@ -13,7 +13,13 @@ import (
 type MovieStruct struct {
 	Title string
 	Genre string
-	Adult string
+}
+
+type DataBaseResult struct {
+	Result []MovieStruct
+}
+
+type ApiResponse struct {
 }
 
 func getApiKey() string {
@@ -42,6 +48,8 @@ func getRecommendations(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	resp.Body.Close()
+	w.Header().Set("Content-Type", "application/json")
+	w.Write(jsonData)
 	fmt.Println(string(jsonData))
 
 	var movieResponse MovieStruct
