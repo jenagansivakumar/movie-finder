@@ -1,70 +1,53 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"os"
 
 	"github.com/joho/godotenv"
 )
 
-type MovieStruct struct {
-	Title string
-	Genre string
-}
+var apiKey string
 
-type DataBaseResult struct {
-	Result []MovieStruct
-}
-
-type ApiResponse struct {
-}
-
-func getApiKey() string {
+func getApi() string {
 	godotenv.Load()
-	apiKey := os.Getenv("API_KEY")
+	apiKey = os.Getenv("API_KEY")
+	if apiKey == "" {
+		log.Fatalf("Cannot find API Key")
+	}
 	return apiKey
 
 }
 
-func healthCheck(w http.ResponseWriter, r *http.Request) {
-	w.Write([]byte("OK"))
+type Movie struct {
+	Title string `json:"title"`
 }
 
-func getRecommendations(w http.ResponseWriter, r *http.Request) {
-	// genre := r.URL.Query().Get("genre")
-	apiKey := getApiKey()
-	url := fmt.Sprintf("https://api.themoviedb.org/3/movie/popular?api_key=%s", apiKey)
+type MoviePage struct {
+	Page         string  `json:"page"`
+	Results      []Movie `json:"results"`
+	TotalPages   int     `json:"total_pages"`
+	TotalResults int     `json:"total_results"`
+}
+
+func fetchResults(w http.ResponseWriter, r *http.Request) {
+	url := fmt.Sprintf("https://api.themoviedb.org/3/movie/popular?api_key=%s&language=en-US&page=1", apiKey)
 	resp, err := http.Get(url)
 	if err != nil {
-		http.Error(w, "Error retrieving response from url", http.StatusInternalServerError)
+		http.Error(w, "Cannot fetch url", http.StatusInternalServerError)
 		return
 	}
-	jsonData, err := io.ReadAll(resp.Body)
-	if err != nil {
-		w.Write([]byte("json data not found"))
-		return
-	}
-	resp.Body.Close()
+	defer resp.Body.Close()
 	w.Header().Set("Content-Type", "application/json")
-	w.Write(jsonData)
-	fmt.Println(string(jsonData))
-
-	var movieResponse MovieStruct
-
-	err = json.Unmarshal(jsonData, &movieResponse)
-	if err != nil {
-		http.Error(w, "Error unmarshalling json", http.StatusInternalServerError)
-	}
-
-	fmt.Println(movieResponse)
+	io.Copy(w, resp.Body)
 
 }
 
 func main() {
-	http.HandleFunc("/recommendations", getRecommendations)
-	http.HandleFunc("/health", healthCheck)
-	http.ListenAndServe(":80", nil)
+	getApi()
+	http.HandleFunc("/", fetchResults)
+	http.ListenAndServe(":8080", nil)
 }
