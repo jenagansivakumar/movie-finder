@@ -32,6 +32,7 @@ func getApiKey() string {
 }
 
 func getResults(w http.ResponseWriter, r *http.Request) {
+
 	apiKey := getApiKey()
 	url := fmt.Sprintf("https://api.themoviedb.org/3/movie/popular?api_key=%s", apiKey)
 
