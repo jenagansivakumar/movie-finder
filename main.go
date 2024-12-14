@@ -1,8 +1,8 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
-	"io"
 	"log"
 	"net/http"
 	"os"
@@ -10,44 +10,53 @@ import (
 	"github.com/joho/godotenv"
 )
 
-var apiKey string
-
-func getApi() string {
-	godotenv.Load()
-	apiKey = os.Getenv("API_KEY")
-	if apiKey == "" {
-		log.Fatalf("Cannot find API Key")
-	}
-	return apiKey
-
-}
-
 type Movie struct {
 	Title string `json:"title"`
 }
 
-type MoviePage struct {
-	Page         string  `json:"page"`
+type Results struct {
+	Page         int     `json:"page"`
 	Results      []Movie `json:"results"`
 	TotalPages   int     `json:"total_pages"`
 	TotalResults int     `json:"total_results"`
 }
 
-func fetchResults(w http.ResponseWriter, r *http.Request) {
-	url := fmt.Sprintf("https://api.themoviedb.org/3/movie/popular?api_key=%s&language=en-US&page=1", apiKey)
+func init() {
+	if err := godotenv.Load(); err != nil {
+		log.Fatal("Error loading .env file", err)
+	}
+}
+
+func getApiKey() string {
+	return os.Getenv("API_KEY")
+}
+
+func getResults(w http.ResponseWriter, r *http.Request) {
+	apiKey := getApiKey()
+	url := fmt.Sprintf("https://api.themoviedb.org/3/movie/popular?api_key=%s", apiKey)
+
 	resp, err := http.Get(url)
 	if err != nil {
-		http.Error(w, "Cannot fetch url", http.StatusInternalServerError)
-		return
+		http.Error(w, "Cannot retrieve URL", http.StatusInternalServerError)
 	}
 	defer resp.Body.Close()
-	w.Header().Set("Content-Type", "application/json")
-	io.Copy(w, resp.Body)
+
+	var results Results
+
+	err = json.NewDecoder(resp.Body).Decode(&results)
+	if err != nil {
+		http.Error(w, "Cannot decode movie", http.StatusInternalServerError)
+	}
+
+	fmt.Println(results.Results)
 
 }
 
 func main() {
-	getApi()
-	http.HandleFunc("/", fetchResults)
-	http.ListenAndServe(":8080", nil)
+
+	http.HandleFunc("/", getResults)
+	err := http.ListenAndServe(":8080", nil)
+	if err != nil {
+		fmt.Println("Error starting server: ", err)
+	}
 }
