@@ -14,6 +14,11 @@ type Movie struct {
 	Title string `json:"title"`
 }
 
+type Cache struct {
+	Item  []byte
+	Found bool
+}
+
 type Results struct {
 	Page         int     `json:"page"`
 	Results      []Movie `json:"results"`
