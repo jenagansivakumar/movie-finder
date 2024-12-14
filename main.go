@@ -1,11 +1,13 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
 	"os"
+	"time"
 
 	"github.com/go-redis/redis/v8"
 	"github.com/joho/godotenv"
@@ -50,6 +52,19 @@ func getResults(w http.ResponseWriter, r *http.Request) {
 	apiKey := getApiKey()
 	url := fmt.Sprintf("https://api.themoviedb.org/3/movie/popular?api_key=%s", apiKey)
 
+	ctx := context.Background()
+
+	cachedData, err := redisClient.Get(ctx, url).Result()
+
+	if err == redis.Nil {
+		fmt.Println("Cache miss")
+	} else if err != nil {
+		http.Error(w, "Internal error", http.StatusInternalServerError)
+	} else {
+		w.Header().Set("Content-Type", "application/json")
+		w.Write([]byte(cachedData))
+	}
+
 	resp, err := http.Get(url)
 	if err != nil {
 		http.Error(w, "Cannot retrieve URL", http.StatusInternalServerError)
@@ -63,6 +78,17 @@ func getResults(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		http.Error(w, "Cannot decode movie", http.StatusInternalServerError)
 		return
+	}
+
+	encodedJson, err := json.Marshal(results)
+	if err != nil {
+		http.Error(w, "error encoding json", http.StatusInternalServerError)
+		return
+	}
+
+	err = redisClient.Set(ctx, url, string(encodedJson), 10*time.Minute).Err()
+	if err != nil {
+		fmt.Println("Error setting redis client")
 	}
 
 	w.Header().Set("Content-Type", "application/json")
