@@ -1,13 +1,11 @@
 package main
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
 	"os"
-	"time"
 
 	"github.com/go-redis/redis/v8"
 	"github.com/joho/godotenv"
@@ -29,19 +27,18 @@ type Results struct {
 	TotalResults int     `json:"total_results"`
 }
 
+var redisClient *redis.Client
+
+func initRedis() {
+	redisClient = redis.NewClient(&redis.Options{
+		Addr: "localhost:6379",
+	})
+}
+
 func init() {
 	if err := godotenv.Load(); err != nil {
 		log.Fatal("Error loading .env file", err)
 	}
-}
-
-var redisClient *redis.Client
-
-func initRedis() *redis.Client {
-	client := redis.NewClient(&redis.Options{
-		Addr: "localhost:6379",
-	})
-	return client
 }
 
 func getApiKey() string {
@@ -52,21 +49,6 @@ func getResults(w http.ResponseWriter, r *http.Request) {
 
 	apiKey := getApiKey()
 	url := fmt.Sprintf("https://api.themoviedb.org/3/movie/popular?api_key=%s", apiKey)
-
-	ctx := context.Background()
-
-	cachedData, err := redisClient.Get(ctx, url).Result()
-	if err == redis.Nil {
-		fmt.Println("Cannot find data in cache")
-
-	} else if err != nil {
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
-
-	} else {
-		w.Header().Set("Content-Type", "application/json")
-		w.Write([]byte(cachedData))
-		return
-	}
 
 	resp, err := http.Get(url)
 	if err != nil {
@@ -83,19 +65,6 @@ func getResults(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	encodedJson, err := json.Marshal(results)
-	if err != nil {
-		http.Error(w, "Error encoding data for cache", http.StatusInternalServerError)
-		return
-	}
-
-	err = redisClient.Set(ctx, url, encodedJson, 10*time.Minute).Err()
-	if err != nil {
-		log.Printf("Failed to set data in Redis: %v", err)
-	} else {
-		log.Println("Data added to cache")
-	}
-
 	w.Header().Set("Content-Type", "application/json")
 	err = json.NewEncoder(w).Encode(results)
 	if err != nil {
@@ -106,10 +75,7 @@ func getResults(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
-	redisClient = initRedis()
-
-	fmt.Println(redisClient)
-
+	initRedis()
 	http.HandleFunc("/", getResults)
 	err := http.ListenAndServe(":8080", nil)
 	if err != nil {
