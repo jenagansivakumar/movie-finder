@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"time"
 
 	"github.com/go-redis/redis/v8"
 	"github.com/joho/godotenv"
@@ -52,28 +53,45 @@ func getResults(w http.ResponseWriter, r *http.Request) {
 
 	if err == redis.Nil {
 		fmt.Println("Cache miss")
+		resp, err := http.Get(url)
+		if err != nil {
+			http.Error(w, "Cannot retrieve response from url", http.StatusInternalServerError)
+			return
+		}
+
+		var results TotalResults
+		err = json.NewDecoder(resp.Body).Decode(&results)
+		if err != nil {
+			http.Error(w, "Error decoding json", http.StatusInternalServerError)
+			return
+		}
+		defer resp.Body.Close()
+
+		jsonData, err := json.Marshal(results)
+		if err != nil {
+			http.Error(w, "Error marshalling JSON", http.StatusInternalServerError)
+			return
+		}
+
+		err = redisClient.Set(ctx, url, string(jsonData), 10*time.Minute).Err()
+		if err != nil {
+			http.Error(w, "error adding json to the cache", http.StatusInternalServerError)
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		fmt.Println("using cache")
+		if err := json.NewEncoder(w).Encode(results); err != nil {
+			http.Error(w, "Error encoding json", http.StatusInternalServerError)
+		}
+
 	} else if err != nil {
-
-	}
-
-	resp, err := http.Get(url)
-	if err != nil {
-		http.Error(w, "Cannot retrieve response from url", http.StatusInternalServerError)
+		http.Error(w, "Internal error", http.StatusInternalServerError)
+	} else {
+		w.Header().Set("Content-Type", "application/json")
+		w.Write([]byte(cacheData))
 		return
 	}
 
-	var results TotalResults
-	err = json.NewDecoder(resp.Body).Decode(&results)
-	if err != nil {
-		http.Error(w, "Error decoding json", http.StatusInternalServerError)
-		return
-	}
-	defer resp.Body.Close()
-
-	w.Header().Set("Content-Type", "application/json")
-	if err := json.NewEncoder(w).Encode(results); err != nil {
-		http.Error(w, "Error encoding json", http.StatusInternalServerError)
-	}
 }
 
 func main() {
