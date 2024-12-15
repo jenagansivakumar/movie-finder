@@ -10,6 +10,7 @@ import (
 
 	"github.com/go-redis/redis/v8"
 	"github.com/joho/godotenv"
+	"golang.org/x/time/rate"
 )
 
 type Movie struct {
@@ -21,6 +22,11 @@ type TotalResults struct {
 }
 
 var redisClient *redis.Client
+var limiter rate.Limiter
+
+func initLimiter() {
+	limiter = *rate.NewLimiter(rate.Every(5*time.Second), 1)
+}
 
 func initRedis() {
 	redisClient = redis.NewClient(&redis.Options{
@@ -44,10 +50,11 @@ func getApi() string {
 }
 
 func getResults(w http.ResponseWriter, r *http.Request) {
-	initRedis()
+
 	apiKey := getApi()
 	url := fmt.Sprintf("https://api.themoviedb.org/3/movie/popular?api_key=%s", apiKey)
 	ctx := context.Background()
+	ip := r.RemoteAddr
 
 	cacheData, err := redisClient.Get(ctx, url).Result()
 
@@ -76,17 +83,17 @@ func getResults(w http.ResponseWriter, r *http.Request) {
 		err = redisClient.Set(ctx, url, string(jsonData), 10*time.Minute).Err()
 		if err != nil {
 			http.Error(w, "error adding json to the cache", http.StatusInternalServerError)
+			return
 		}
 
 		w.Header().Set("Content-Type", "application/json")
-		fmt.Println("using cache")
-		if err := json.NewEncoder(w).Encode(results); err != nil {
-			http.Error(w, "Error encoding json", http.StatusInternalServerError)
-		}
+
+		w.Write(jsonData)
 
 	} else if err != nil {
 		http.Error(w, "Internal error", http.StatusInternalServerError)
 	} else {
+		fmt.Println("using cache")
 		w.Header().Set("Content-Type", "application/json")
 		w.Write([]byte(cacheData))
 		return
@@ -95,7 +102,8 @@ func getResults(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
-
+	initRedis()
+	initLimiter()
 	http.HandleFunc("/recommendations", getResults)
 	http.HandleFunc("/health", getHealth)
 	http.ListenAndServe(":8080", nil)
