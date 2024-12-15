@@ -28,16 +28,16 @@ func initRedis() {
 	redisClient = redis.NewClient(&redis.Options{
 		Addr: "localhost:6379",
 	})
+	fmt.Println("redis initialised")
 }
 
 func getOrCreateLimiter(ip string) *rate.Limiter {
 	if _, exists := limiterMap[ip]; !exists {
 		limiterMap[ip] = rate.NewLimiter(rate.Every(5*time.Second), 1)
 	}
-
 	return limiterMap[ip]
-
 }
+
 func getHealth(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte("ok"))
 }
@@ -51,7 +51,6 @@ func getApi() string {
 }
 
 func getResults(w http.ResponseWriter, r *http.Request, redisClient *redis.Client) {
-
 	apiKey := getApi()
 	url := fmt.Sprintf("https://api.themoviedb.org/3/movie/popular?api_key=%s", apiKey)
 	ctx := context.Background()
@@ -60,15 +59,15 @@ func getResults(w http.ResponseWriter, r *http.Request, redisClient *redis.Clien
 	cacheData, err := redisClient.Get(ctx, url).Result()
 
 	if err == redis.Nil {
-		fmt.Println("Cache miss")
+		fmt.Println("cache misssed")
 		getOrCreateLimiter(ip)
-
 		limiter := getOrCreateLimiter(ip)
 
 		if !limiter.Allow() {
 			http.Error(w, "Too many requests", http.StatusTooManyRequests)
 			return
 		}
+		fmt.Println("Fetching data from API")
 		resp, err := http.Get(url)
 		if err != nil {
 			http.Error(w, "Cannot retrieve response from url", http.StatusInternalServerError)
@@ -94,20 +93,18 @@ func getResults(w http.ResponseWriter, r *http.Request, redisClient *redis.Clien
 			http.Error(w, "error adding json to the cache", http.StatusInternalServerError)
 			return
 		}
-
+		fmt.Println("setting cached data")
 		w.Header().Set("Content-Type", "application/json")
-
 		w.Write(jsonData)
 
 	} else if err != nil {
-		http.Error(w, "Internal error", http.StatusInternalServerError)
+		fmt.Printf("Error connecting to redisc: %v\n", err)
+		http.Error(w, "Internal error, redis error", http.StatusInternalServerError)
 	} else {
 		fmt.Println("using cache")
 		w.Header().Set("Content-Type", "application/json")
 		w.Write([]byte(cacheData))
-		return
 	}
-
 }
 
 func main() {
