@@ -107,7 +107,6 @@ func getResults(w http.ResponseWriter, r *http.Request) {
 
 func main() {
 	initRedis()
-	initLimiter()
 	http.HandleFunc("/recommendations", getResults)
 	http.HandleFunc("/health", getHealth)
 	http.ListenAndServe(":8080", nil)
