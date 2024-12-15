@@ -24,6 +24,7 @@ type TotalResults struct {
 var redisClient *redis.Client
 var limiterMap = make(map[string]*rate.Limiter)
 var redisTimeOut = 5 * time.Second
+var limiterTimeOut = 5 * time.Second
 
 func initRedis() {
 	redisClient = redis.NewClient(&redis.Options{
@@ -35,7 +36,7 @@ func initRedis() {
 
 func getOrCreateLimiter(ip string) *rate.Limiter {
 	if _, exists := limiterMap[ip]; !exists {
-		limiterMap[ip] = rate.NewLimiter(rate.Every(5*time.Second), 1)
+		limiterMap[ip] = rate.NewLimiter(rate.Every(limiterTimeOut), 1)
 	}
 	return limiterMap[ip]
 }
