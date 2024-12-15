@@ -23,11 +23,12 @@ type TotalResults struct {
 
 var redisClient *redis.Client
 var limiterMap = make(map[string]*rate.Limiter)
+var redisTimeOut = 10 * time.Second
 
 func initRedis() {
 	redisClient = redis.NewClient(&redis.Options{
-		// Addr: "redis-cache:6379",
-		Addr: "localhost:6379",
+		Addr: "redis-cache:6379",
+		// Addr: "localhost:6379",
 	})
 	fmt.Println("redis initialised")
 }
@@ -91,7 +92,7 @@ func getResults(w http.ResponseWriter, r *http.Request, redisClient *redis.Clien
 				return
 			}
 
-			err = redisClient.Set(ctx, url, string(jsonData), 10*time.Minute).Err()
+			err = redisClient.Set(ctx, url, string(jsonData), redisTimeOut).Err()
 			if err != nil {
 				http.Error(w, "error adding json to the cache", http.StatusInternalServerError)
 				return
