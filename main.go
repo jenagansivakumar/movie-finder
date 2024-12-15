@@ -30,6 +30,14 @@ func initRedis() {
 	})
 }
 
+func getOrCreateLimiter(ip string) *rate.Limiter {
+	if _, exists := limiterMap[ip]; !exists {
+		limiterMap[ip] = rate.NewLimiter(rate.Every(5*time.Second), 1)
+	}
+
+	return limiterMap[ip]
+
+}
 func getHealth(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte("ok"))
 }
@@ -39,13 +47,10 @@ func getApi() string {
 	if err != nil {
 		fmt.Printf("error loading .env: %s", err)
 	}
-
-	apiKey := os.Getenv("API_KEY")
-	return apiKey
-
+	return os.Getenv("API_KEY")
 }
 
-func getResults(w http.ResponseWriter, r *http.Request) {
+func getResults(w http.ResponseWriter, r *http.Request, redisClient *redis.Client) {
 
 	apiKey := getApi()
 	url := fmt.Sprintf("https://api.themoviedb.org/3/movie/popular?api_key=%s", apiKey)
@@ -56,11 +61,11 @@ func getResults(w http.ResponseWriter, r *http.Request) {
 
 	if err == redis.Nil {
 		fmt.Println("Cache miss")
-		if _, ok := limiterMap[ip]; !ok {
-			limiterMap[ip] = rate.NewLimiter(rate.Every(5*time.Minute), 1)
+		getOrCreateLimiter(ip)
 
-		}
-		if !limiterMap[ip].Allow() {
+		limiter := getOrCreateLimiter(ip)
+
+		if !limiter.Allow() {
 			http.Error(w, "Too many requests", http.StatusTooManyRequests)
 			return
 		}
@@ -69,6 +74,7 @@ func getResults(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "Cannot retrieve response from url", http.StatusInternalServerError)
 			return
 		}
+		defer resp.Body.Close()
 
 		var results TotalResults
 		err = json.NewDecoder(resp.Body).Decode(&results)
@@ -76,7 +82,6 @@ func getResults(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "Error decoding json", http.StatusInternalServerError)
 			return
 		}
-		defer resp.Body.Close()
 
 		jsonData, err := json.Marshal(results)
 		if err != nil {
@@ -107,7 +112,9 @@ func getResults(w http.ResponseWriter, r *http.Request) {
 
 func main() {
 	initRedis()
-	http.HandleFunc("/recommendations", getResults)
+	http.HandleFunc("/recommendations", func(w http.ResponseWriter, r *http.Request) {
+		getResults(w, r, redisClient)
+	})
 	http.HandleFunc("/health", getHealth)
 	http.ListenAndServe(":8080", nil)
 }
