@@ -42,6 +42,8 @@ func initRedis() {
 
 var limiter *rate.Limiter
 
+var limiterMap = make(map[string]*rate.Limiter)
+
 func initLimiter() {
 
 	limiter = rate.NewLimiter(rate.Every(5*time.Second), 1)
@@ -58,10 +60,19 @@ func getTmdbResults(w http.ResponseWriter, r *http.Request) {
 
 	apiKey := getApiKey()
 	url := fmt.Sprintf("https://api.themoviedb.org/3/movie/popular?api_key=%s", apiKey)
+	ip := r.RemoteAddr
 
-	allowed := limiter.Allow()
-	if !allowed {
-		http.Error(w, "Too many requests", http.StatusBadRequest)
+	rateLimiter, exists := limiterMap[ip]
+
+	if !exists {
+		rateLimiter = rate.NewLimiter(rate.Every(5*time.Second), 1)
+		limiterMap[ip] = rateLimiter
+	}
+
+	rateLimiter.Allow()
+
+	if !rateLimiter.Allow() {
+		http.Error(w, "Too many requests", http.StatusTooManyRequests)
 	}
 
 	ctx := context.Background()
