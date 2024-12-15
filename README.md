@@ -1,62 +1,59 @@
+# Movie Recommender
+ 
+## Overview
 
-# movie-finder-api
+The Movie Recommender app was created to address challenges such as web scraping and enhanced response times. Using The Movie Database (TMDb) API, this app fetches popular movie data, implements rate limiting, and utilises caching with Redis to speed up responses.
 
-Movie Finder API
-
-A Go-based API for fetching movie recommendations with rate limiting, integrating The Movie Database (TMDb) API for real-time movie data. Fully Dockerised for easy deployment and testing.
-
-
-
+The app is containerised using Docker, including a Redis container, making it portable and easy to deploy.
 ## Features
 
-- Movie Recommendations: Fetch movies dynamically using query parameters (e.g., `/recommendations?genre=Sci-Fi`).
-- Rate Limiting: IP-based rate limiter (1 request every 5 seconds) to control traffic and mitigate scraping.
-- TMDb API Integration: Retrieves movie data such as title, genre, and ratings.
-- Health Check: `/health` endpoint for monitoring server status.
-- Dockerised Deployment: Simplified setup with Docker.
+- **Rate Limiting**: Uses `golang.org/x/time/rate` and Redis to prevent excessive requests to the TMDb API (1 request per 5 seconds).
+- **Caching**: Data from TMDb is cached in Redis to avoid repeated API calls and improve response times.
+- **Containerisation**: The entire system, including the Movie Recommender app and Redis, is containerised using Docker.
 
----
-## Requirements
-- Go (version 1.20+)
-- Docker
-- TMDb API Key
+## Technologies Used
 
----
-## Setup Instructions
+- **Go**: The backend language for the application.
+- **Redis**: For caching API responses and rate limiting.
+- **Docker**: To containerise both the application and Redis for easy deployment.
+- **Rate Limiting**: Implemented using `golang.org/x/time/rate` along with Redis for storing user request limits.
 
-### 1. Clone the Repository
+## How It Works
+
+1. The app fetches popular movie data from TMDb.
+2. It applies a rate limiter to avoid overwhelming the API (1 request every 5 seconds).
+3. The data is cached in Redis for quicker access on subsequent requests.
+4. Docker is used to containerise the entire system, making it easy to deploy and run anywhere.
+
+## Installation & Setup
+
+### 1. Clone the repository:
+
 ```bash
-git clone https://github.com/jenagansivakumar/movie-finder.git
-cd movie-finder
+git clone https://github.com/yourusername/movie-recommender.git
+cd movie-recommender
 ```
 
-### 2. Add TMDb API Key
-- Create a `.env` file in the project root:
-  ```
-  TMDB_API_KEY=your_api_key_here
-  ```
-
-### 3. Build and Run with Docker
-```bash
-docker build -t movie-recommender .
-docker run -p 8080:8080 --env-file .env movie-recommender
+### 2. Create the .env file:
+```
+API_KEY=your_api_key_here
 ```
 
----
-## Endpoints
+### 3. Run with Docker Compose:
+Make sure Docker and Docker Compose are installed. Then, run:
+```
+docker compose up --build
+```
+This comment will build the Docker images and start both the Movie Recommender app and Redis containers.
 
-### 1. `/health`
-- Method: `GET`
-- Response: `OK`
+### 4. Access the app:
+Once the container are up and running, visit http://localhost:8080 in your browser. Refresh the page a few times to see the logs and check the caching behaviour.
 
-### 2. `/recommendations?genre=<genre>`
-- Method: `GET`
-- Query Parameter:
-  - `genre`: Movie genre or keyword to search.
-- Response: JSON array of movies.
+## How to Test
+1. Once the app is running, check the logs:
+- "cache miss"
+- "fetching data from API"
+- "setting cached data"
+- "using cache"
+2. Logs wwill show when the data is fetched from the API and when it's served from the cache.
 
----
-## Demo
-- https://drive.google.com/file/d/1BLfOVsc4-rdOqWF9G-8i_NFZ8Km0UgCS/view?usp=drive_link <----- Link to video demo
-
----
