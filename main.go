@@ -23,12 +23,12 @@ type TotalResults struct {
 
 var redisClient *redis.Client
 var limiterMap = make(map[string]*rate.Limiter)
-var redisTimeOut = 10 * time.Second
+var redisTimeOut = 5 * time.Second
 
 func initRedis() {
 	redisClient = redis.NewClient(&redis.Options{
-		Addr: "redis-cache:6379",
-		// Addr: "localhost:6379",
+		// Addr: "redis-cache:6379",
+		Addr: "localhost:6379",
 	})
 	fmt.Println("redis initialised")
 }
