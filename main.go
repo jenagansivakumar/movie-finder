@@ -69,7 +69,7 @@ func getResults(w http.ResponseWriter, r *http.Request, redisClient *redis.Clien
 			return
 		}
 
-		go func() {
+		{
 			fmt.Println("Go routine: fetching data from api")
 			resp, err := http.Get(url)
 			if err != nil {
@@ -99,7 +99,7 @@ func getResults(w http.ResponseWriter, r *http.Request, redisClient *redis.Clien
 			fmt.Println("setting cached data")
 			w.Header().Set("Content-Type", "application/json")
 			w.Write(jsonData)
-		}()
+		}
 
 	} else if err != nil {
 		fmt.Printf("Error connecting to redisc: %v\n", err)
