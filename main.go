@@ -22,11 +22,7 @@ type TotalResults struct {
 }
 
 var redisClient *redis.Client
-var limiter rate.Limiter
-
-func initLimiter() {
-	limiter = *rate.NewLimiter(rate.Every(5*time.Second), 1)
-}
+var limiterMap = make(map[string]*rate.Limiter)
 
 func initRedis() {
 	redisClient = redis.NewClient(&redis.Options{
@@ -60,6 +56,14 @@ func getResults(w http.ResponseWriter, r *http.Request) {
 
 	if err == redis.Nil {
 		fmt.Println("Cache miss")
+		if _, ok := limiterMap[ip]; !ok {
+			limiterMap[ip] = rate.NewLimiter(rate.Every(5*time.Minute), 1)
+
+		}
+		if !limiterMap[ip].Allow() {
+			http.Error(w, "Too many requests", http.StatusTooManyRequests)
+			return
+		}
 		resp, err := http.Get(url)
 		if err != nil {
 			http.Error(w, "Cannot retrieve response from url", http.StatusInternalServerError)
