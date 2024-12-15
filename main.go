@@ -102,7 +102,7 @@ func getResults(w http.ResponseWriter, r *http.Request, redisClient *redis.Clien
 		}
 
 	} else if err != nil {
-		fmt.Printf("Error connecting to redisc: %v\n", err)
+		fmt.Printf("Error connecting to redis: %v\n", err)
 		http.Error(w, "Internal error, redis error", http.StatusInternalServerError)
 	} else {
 		fmt.Println("using cache")
