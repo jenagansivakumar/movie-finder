@@ -1,0 +1,22 @@
+version: '3.8'
+
+services:
+  movie-recommender:
+    build: .
+    ports:
+      - "8080:8080"
+    environment:
+      - REDIS_HOST=redis-cache
+    depends_on:
+      - redis-cache
+    networks:
+      - movie-network
+
+  redis-cache:
+    image: redis
+    networks:
+      - movie-network
+
+networks:
+  movie-network:
+    driver: bridge

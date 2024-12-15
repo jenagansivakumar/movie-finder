@@ -28,8 +28,8 @@ var limiterTimeOut = 5 * time.Second
 
 func initRedis() {
 	redisClient = redis.NewClient(&redis.Options{
-		// Addr: "redis-cache:6379",
-		Addr: "localhost:6379",
+		Addr: "redis-cache:6379",
+		// Addr: "localhost:6379",
 	})
 	fmt.Println("redis initialised")
 }
@@ -72,7 +72,7 @@ func getResults(w http.ResponseWriter, r *http.Request, redisClient *redis.Clien
 		}
 
 		{
-			fmt.Println("Go routine: fetching data from api")
+			fmt.Println("fetching data from api")
 			resp, err := http.Get(url)
 			if err != nil {
 				http.Error(w, "Cannot retrieve response from url", http.StatusInternalServerError)
