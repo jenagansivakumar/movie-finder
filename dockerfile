@@ -1,7 +1,12 @@
-FROM golang:1.20-alipine
+FROM golang:1.20-alpine
 
 WORKDIR /app
 
-COPY ./ /app/
+COPY . .
 
-RUN  go mod tidy
+RUN go mod tidy
+RUN go build -o app .
+
+EXPOSE 8080
+
+CMD ["./app"]
