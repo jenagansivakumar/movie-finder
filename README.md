@@ -3,7 +3,7 @@
 
 ## Overview
 
-This project offers practical experience in setting up a multi-component, containerised web application using a "Polyglot Stack" . The aim is to familiarise get familiased with multiple languages, frameworks, and runtime environments, including Node.js, Python, .NET, PostgreSQL, Redis, Docker, Terraform, and Ansible, all deployed on AWS.
+This project offers practical experience in setting up a multi-component, containerised web application using a "Polyglot Stack" . The aim is to get familiarised with multiple languages, frameworks, and runtime environments, including Node.js, Python, .NET, PostgreSQL, Redis, Docker, Terraform, and Ansible, all deployed on AWS.
 
 
 
