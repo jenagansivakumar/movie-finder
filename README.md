@@ -1,55 +1,58 @@
-
-# Multi-Stack DevOps Infrastructure Automation Project
-
+# Movie Recommender
+ 
 ## Overview
 
-This project offers practical experience in setting up a multi-component, containerised web application using a "Polyglot Stack" . The aim is to get familiarised with multiple languages, frameworks, and runtime environments, including Node.js, Python, .NET, PostgreSQL, Redis, Docker, Terraform, and Ansible, all deployed on AWS.
+The Movie Recommender app was created to address challenges such as web scraping and enhanced response times. Using The Movie Database (TMDb) API, this app fetches popular movie data, implements rate limiting, and utilises caching with Redis to speed up responses.
 
+The app is containerised using Docker, including a Redis container, making it portable and easy to deploy.
+## Features
 
+- **Rate Limiting**: Uses `golang.org/x/time/rate` and Redis to prevent excessive requests to the TMDb API (1 request per 5 seconds).
+- **Caching**: Data from TMDb is cached in Redis to avoid repeated API calls and improve response times.
+- **Containerisation**: The entire system, including the Movie Recommender app and Redis, is containerised using Docker.
 
-## Tech Stack
+## Technologies Used
 
-- **Frontend (Result Viewer)**: Node.js/Express application that displays real-time voting results.
-- **Voting Application**: Python/Flask-based frontend for casting votes.
-- **Worker Service**: .NET application that processes votes and stores them in a database.
-- **Database**: PostgreSQL for persistent storage of vote data.
-- **Cache/Queue**: Redis, an in-memory data structure store.
-## Project Structure
-- `vote/`: Python/Flask application.
-- `result/`: Node.js/Express application.
-- `worker/`: .NET Worker Service.
-- `db/`: PostgreSQL setup.
-- `redis/`: Redis configuration.
+- **Go**: The backend language for the application.
+- **Redis**: For caching API responses and rate limiting.
+- **Docker**: To containerise both the application and Redis for easy deployment.
+- **Rate Limiting**: Implemented using `golang.org/x/time/rate` along with Redis for storing user request limits.
 
-## Running Applications Locally
-### Prerequisites
-Ensure you have Python, Node.js, and .NET SDK installed on your machine.
-### Steps
-1. **Vote App**:
-   - Navigate to the `vote/` directory.
-   - Install dependencies: `pip install -r requirements.txt`.
-   - Run the application: `python app.py`.
+## How It Works
 
-2. **Result App**:
-   - Navigate to the `result/` directory.
-   - Install dependencies: `npm ci` (utilises package-lock.json).
-   - Run the application: `node server.js`.
+1. The app fetches popular movie data from TMDb.
+2. It applies a rate limiter to avoid overwhelming the API (1 request every 5 seconds).
+3. The data is cached in Redis for quicker access on subsequent requests.
+4. Docker is used to containerise the entire system, making it easy to deploy and run anywhere.
 
-3. **Worker Service**:
-   - Navigate to the `worker/` directory.
-   - Build and run the service: `dotnet build` followed by `dotnet run`.
+## Installation & Setup
 
-4. **Redis**:
-   - Install and run Redis locally or use Docker: `redis-server`.
+### 1. Clone the repository:
 
-5. **PostgreSQL**:
-   - Install PostgreSQL and ensure it is running on the default port (5432).
-   - Create a database named `votes` with the necessary credentials.
-## Containerisation and Deployment
-Each component is designed to be run within Docker containers to simplify deployment and scaling. The provided Dockerfiles in each directory facilitate building and running the respective services. 
-## Infrastructure Management
-Utilise Terraform for provisioning AWS infrastructure and Ansible for configuring EC2 instances and managing deployments.
+```bash
+git clone https://github.com/yourusername/movie-recommender.git
+cd movie-recommender
+```
 
-## Collaborative Development
-- Utilised Jira to manage tasks and workflows.
-- Employ Agile methodologies including Scrum practices.
+### 2. Create the .env file:
+```
+API_KEY=your_api_key_here
+```
+
+### 3. Run with Docker Compose:
+Make sure Docker and Docker Compose are installed. Then, run:
+```
+docker compose up --build
+```
+This comment will build the Docker images and start both the Movie Recommender app and Redis containers.
+
+### 4. Access the app:
+Once the container are up and running, visit http://localhost:8080 in your browser. Refresh the page a few times to see the logs and check the caching behaviour.
+
+## How to Test
+1. Once the app is running, check the logs:
+- "cache miss"
+- "fetching data from API"
+- "setting cached data"
+- "using cache"
+2. Logs wwill show when the data is fetched from the API and when it's served from the cache.
